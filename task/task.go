@@ -15,21 +15,13 @@ import (
 	"github.com/moby/moby/pkg/stdcopy"
 )
 
-type State int
 
-const (
-	Pending State = iota
-	Scheduled
-	Running
-	Completed
-	Failed
-)
 
 type Task struct {
-	ID    uuid.UUID
-	Name  string
-	State State
-	// The following fields are Docker specific. This means our app is coupled to Docker.
+	ID            uuid.UUID
+	ContainerID   string
+	Name          string
+	State         State
 	Image         string
 	CPU           float64
 	Memory        int64
@@ -37,11 +29,8 @@ type Task struct {
 	ExportedPorts nat.PortSet
 	PortBindings  map[string]string
 	RestartPolicy string
-	// Some basic metrics for the task. Not sure if these are also Docker specific.
-	// As in I am not sure if this code is shaped to deal with the Docker API.
-	// But I am going to assume it is.
-	StartTime  time.Time
-	FinishTime time.Time
+	StartTime     time.Time
+	FinishTime    time.Time
 }
 
 type TaskEvent struct {
@@ -70,11 +59,31 @@ type Config struct {
 	RestartPolicy string
 }
 
+func NewConfig(t *Task) *Config {
+	return &Config{
+		Name:          t.Name,
+		ExposedPorts:  t.ExportedPorts,
+		Image:         t.Image,
+		Cpu:           t.CPU,
+		Memory:        t.Memory,
+		Disk:          t.Disk,
+		RestartPolicy: t.RestartPolicy,
+	}
+}
+
 // The docker struct that will be used to instantiate a docker client connection
 
 type Docker struct {
 	Client *client.Client
 	Config Config
+}
+
+func NewDocker(c *Config) *Docker {
+	dc, _ := client.NewClientWithOpts(client.FromEnv)
+	return &Docker{
+		Client: dc,
+		Config: *c,
+	}
 }
 
 type DockerResult struct {
@@ -84,9 +93,6 @@ type DockerResult struct {
 	Result      string
 }
 
-// saku-edit
-// The Run method that will be used to run the docker container
-// I had to modify some of the code due to deprecation
 func (d *Docker) Run() DockerResult {
 	ctx := context.Background()
 	reader, err := d.Client.ImagePull(ctx, d.Config.Image, types.ImagePullOptions{})
@@ -161,3 +167,4 @@ func (d *Docker) Stop(id string) DockerResult {
 
 	return DockerResult{Action: "stop", Result: "success", Error: nil}
 }
+

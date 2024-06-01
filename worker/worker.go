@@ -35,12 +35,15 @@ func (w *Worker) RunTask() task.DockerResult {
 		log.Println("No tasks in the queue")
 	}
 
-	taskQueued := t.(task.Task)
+	taskQueued, ok := t.(task.Task)
+	if !ok {
+		log.Println("Item in the queue is not a task")
+	}
 
 	taskPersisted := w.Db[taskQueued.ID]
 	if taskPersisted == nil {
 		taskPersisted = &taskQueued
-		w.Db[taskQueued.ID] = &taskQueued
+		w.Db[taskQueued.ID] = taskPersisted
 	}
 
 	var result task.DockerResult
@@ -59,6 +62,14 @@ func (w *Worker) RunTask() task.DockerResult {
 	}
 
 	return result
+}
+
+func (w *Worker) GetTasks() []*task.Task {
+	tasks := []*task.Task{}
+	for _, t := range w.Db {
+		tasks = append(tasks, t)
+	}
+	return tasks
 }
 
 func (w *Worker) AddTask(t task.Task) {

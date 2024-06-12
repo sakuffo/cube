@@ -156,3 +156,11 @@ func New(workers []string) *Manager {
 		TaskWorkerMap: taskWorkerMap,
 	}
 }
+
+func (m *Manager) GetTasks() []*task.Task {
+	tasks := []*task.Task{}
+	for _, t := range m.TaskDb {
+		tasks = append(tasks, t)
+	}
+	return tasks
+}

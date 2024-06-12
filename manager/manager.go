@@ -13,10 +13,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
 )
+
+type ErrResponse struct {
+	HTTPStatusCode int
+	Message        string
+}
 
 type Manager struct {
 	Pending       queue.Queue
@@ -41,7 +47,7 @@ func (m *Manager) SelectWorker() string {
 	return m.Workers[newWorker]
 }
 
-func (m *Manager) UpdateTasks() {
+func (m *Manager) updateTasks() {
 	for _, w := range m.Workers {
 		url := fmt.Sprintf("http://%s/tasks", w)
 		resp, err := http.Get(url)
@@ -79,6 +85,16 @@ func (m *Manager) UpdateTasks() {
 		}
 	}
 
+}
+
+func (m *Manager) UpdateTasks() {
+	for {
+		log.Println("Checking for task updates from workers")
+		m.updateTasks()
+		log.Println("Task updates complete")
+		log.Println("Sleeping for 15 seconds")
+		time.Sleep(15 * time.Second)
+	}
 }
 
 func (m *Manager) SendWork() {
@@ -163,4 +179,13 @@ func (m *Manager) GetTasks() []*task.Task {
 		tasks = append(tasks, t)
 	}
 	return tasks
+}
+
+func (m *Manager) ProcessTasks() {
+	for {
+		log.Println("Processing any tasks in the queue")
+		m.SendWork()
+		log.Println("Sleeping for 10 seconds")
+		time.Sleep(10 * time.Second)
+	}
 }
